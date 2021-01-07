@@ -2,7 +2,8 @@ import sqlite3
 import time
 import typing
 from collections import ChainMap
-from typing import Any, Callable, ModuleType, Optional, Sequence, TypedDict
+from types import ModuleType
+from typing import Any, Callable, Optional, Sequence, TypedDict
 
 from .dbapi import Connection, Cursor, Module
 
