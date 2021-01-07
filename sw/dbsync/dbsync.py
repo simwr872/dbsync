@@ -114,7 +114,7 @@ class Database:
             raise ValueError(
                 f"Provided module's global attribute paramstyle must be one of {paramstyles.keys()}"
             )
-        self._param = paramstyle
+        self._param = paramstyles[paramstyle]
         if extra_columns is None:
             extra_columns = []
         self._extra_columns = extra_columns
