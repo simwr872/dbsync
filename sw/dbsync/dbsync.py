@@ -49,7 +49,7 @@ class Table:
         deleted_columns = ",".join(primary_columns)
         self._deleted_query = f"SELECT {deleted_columns} FROM {name} WHERE {modified_conditions}"
 
-    def graverob(self, cursor: Cursor, timestamp: int):
+    def graverob(self, cursor: Cursor, timestamp: int) -> None:
         cursor.execute(f"DELETE FROM {self._name} WHERE {timestamp}<timestamp AND timestamp<0")
 
     def synchronize(
@@ -124,10 +124,10 @@ class Database:
         self._tables: dict[str, Table] = {}
         self._counter = counter
 
-    def add_table(self, name: str, primary_columns: list[str], schema: dict[str, Any]):
+    def add_table(self, name: str, primary_columns: list[str], schema: dict[str, Any]) -> None:
         self._tables[name] = Table(name, primary_columns, schema, self._extra_columns, self._param)
 
-    def graverob(self, connection: Connection, delta: int = 2592000):
+    def graverob(self, connection: Connection, delta: int = 2592000) -> None:
         timestamp = -self._counter() + delta
         cursor = connection.cursor()
         try:
@@ -143,7 +143,7 @@ class Database:
     def synchronize(
         self, connection: Connection, request: MessageType, **extras: Any
     ) -> MessageType:
-        last_timestamp = max(0, request["timestamp"])
+        last_timestamp = request["timestamp"]
         current_timestamp = self._counter()
         cursor = connection.cursor()
         response: MessageType = {"timestamp": current_timestamp, "table": {}}
