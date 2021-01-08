@@ -1,0 +1,90 @@
+{
+    "definitions": {
+        "item_deleted": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                }
+            },
+            "additionalProperties": false,
+            "required": [
+                "id"
+            ]
+        },
+        "item_modified": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "additionalProperties": false,
+            "required": [
+                "id",
+                "name"
+            ]
+        },
+        "table": {
+            "type": "object",
+            "properties": {
+                "modified": {
+                    "type": "array"
+                },
+                "deleted": {
+                    "type": "array"
+                }
+            },
+            "additionalProperties": false,
+            "required": [
+                "modified",
+                "deleted"
+            ]
+        }
+    },
+    "type": "object",
+    "properties": {
+        "timestamp": {
+            "type": "integer",
+            "minimum": 0
+        },
+        "table": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/table"
+                        },
+                        {
+                            "properties": {
+                                "modified": {
+                                    "items": {
+                                        "$ref": "#/definitions/item_modified"
+                                    }
+                                },
+                                "deleted": {
+                                    "items": {
+                                        "$ref": "#/definitions/item_deleted"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                }
+            },
+            "additionalProperties": false,
+            "required": [
+                "item"
+            ]
+        }
+    },
+    "additionalProperties": false,
+    "required": [
+        "timestamp",
+        "table"
+    ]
+}

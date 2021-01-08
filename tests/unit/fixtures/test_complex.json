@@ -1,0 +1,148 @@
+{
+    "definitions": {
+        "thread_deleted": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                }
+            },
+            "additionalProperties": false,
+            "required": [
+                "id"
+            ]
+        },
+        "thread_modified": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "additionalProperties": false,
+            "required": [
+                "id",
+                "name"
+            ]
+        },
+        "post_deleted": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "thread_id": {
+                    "type": "integer"
+                }
+            },
+            "additionalProperties": false,
+            "required": [
+                "id",
+                "thread_id"
+            ]
+        },
+        "post_modified": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "thread_id": {
+                    "type": "integer"
+                },
+                "text": {
+                    "type": "string"
+                }
+            },
+            "additionalProperties": false,
+            "required": [
+                "id",
+                "thread_id",
+                "text"
+            ]
+        },
+        "table": {
+            "type": "object",
+            "properties": {
+                "modified": {
+                    "type": "array"
+                },
+                "deleted": {
+                    "type": "array"
+                }
+            },
+            "additionalProperties": false,
+            "required": [
+                "modified",
+                "deleted"
+            ]
+        }
+    },
+    "type": "object",
+    "properties": {
+        "timestamp": {
+            "type": "integer",
+            "minimum": 0
+        },
+        "table": {
+            "type": "object",
+            "properties": {
+                "thread": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/table"
+                        },
+                        {
+                            "properties": {
+                                "modified": {
+                                    "items": {
+                                        "$ref": "#/definitions/thread_modified"
+                                    }
+                                },
+                                "deleted": {
+                                    "items": {
+                                        "$ref": "#/definitions/thread_deleted"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                "post": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/table"
+                        },
+                        {
+                            "properties": {
+                                "modified": {
+                                    "items": {
+                                        "$ref": "#/definitions/post_modified"
+                                    }
+                                },
+                                "deleted": {
+                                    "items": {
+                                        "$ref": "#/definitions/post_deleted"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                }
+            },
+            "additionalProperties": false,
+            "required": [
+                "thread",
+                "post"
+            ]
+        }
+    },
+    "additionalProperties": false,
+    "required": [
+        "timestamp",
+        "table"
+    ]
+}

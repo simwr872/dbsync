@@ -49,6 +49,9 @@ class Table:
         deleted_columns = ",".join(primary_columns)
         self._deleted_query = f"SELECT {deleted_columns} FROM {name} WHERE {modified_conditions}"
 
+    def graverob(self, cursor: Cursor, timestamp: int):
+        cursor.execute(f"DELETE FROM {self._name} WHERE {timestamp}<timestamp AND timestamp<0")
+
     def synchronize(
         self,
         cursor: Cursor,
@@ -76,7 +79,7 @@ class Table:
         )
         cursor.execute(self._modified_query, [last_timestamp, current_timestamp] + extra_values)
         modified = [row_factory(cursor, row) for row in cursor.fetchall()]
-        cursor.execute(self._delete_query, [-current_timestamp, -last_timestamp] + extra_values)
+        cursor.execute(self._deleted_query, [-current_timestamp, -last_timestamp] + extra_values)
         deleted = [row_factory(cursor, row) for row in cursor.fetchall()]
         return {
             "modified": modified,
@@ -104,8 +107,8 @@ class Database:
     def __init__(
         self,
         extra_columns: Optional[list[str]] = None,
-        module: ModuleType = sqlite3,
         counter: Callable[[], int] = lambda: int(time.time()),
+        module: ModuleType = sqlite3,
     ):
         # No type checkers support modules as implementations of protocols (January 2021)
         paramstyle = typing.cast(Module, module).paramstyle
@@ -123,6 +126,19 @@ class Database:
 
     def add_table(self, name: str, primary_columns: list[str], schema: dict[str, Any]):
         self._tables[name] = Table(name, primary_columns, schema, self._extra_columns, self._param)
+
+    def graverob(self, connection: Connection, delta: int = 2592000):
+        timestamp = -self._counter() + delta
+        cursor = connection.cursor()
+        try:
+            for table in self._tables.values():
+                table.graverob(cursor, timestamp)
+            connection.commit()
+        except Exception as exception:
+            connection.rollback()
+            raise exception
+        finally:
+            cursor.close()
 
     def synchronize(
         self, connection: Connection, request: MessageType, **extras: Any
