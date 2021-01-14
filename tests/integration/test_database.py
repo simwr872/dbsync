@@ -22,26 +22,28 @@ class TestSQLite3(TestCase):
 
     def setUp(self) -> None:
         self.connection = sqlite3.connect(":memory:")
+        self.cursor = self.connection.cursor()
 
     def tearDown(self) -> None:
+        self.cursor.close()
         self.connection.close()
 
     def test_graverob(self) -> None:
-        self.connection.execute("CREATE TABLE item(id INTEGER, timestamp INTEGER)")
+        self.cursor.execute("CREATE TABLE item(id INTEGER, timestamp INTEGER)")
         database = Database(counter=lambda: 5)
         database.add_table("item", ["id"], {"id": {"type": "integer"}})
-        self.connection.executemany(
+        self.cursor.executemany(
             "INSERT INTO item VALUES(?,?)", [(1, 1), (2, 3), (3, -1), (4, -2), (5, -3), (6, -4)]
         )
-        database.graverob(self.connection, 2)
+        database.graverob(self.cursor, 2)
 
         self.assertEqual(
-            self.connection.execute("SELECT * FROM item ORDER BY id").fetchall(),
+            self.cursor.execute("SELECT * FROM item ORDER BY id").fetchall(),
             [(1, 1), (2, 3), (5, -3), (6, -4)],
         )
 
     def test_basic(self) -> None:
-        self.connection.execute(
+        self.cursor.execute(
             "CREATE TABLE item(id INTEGER PRIMARY KEY, name TEXT, timestamp INTEGER)"
         )
         database = Database(counter=counter())
@@ -49,7 +51,7 @@ class TestSQLite3(TestCase):
         # Client A adds item 1
         self.assertEqual(
             database.synchronize(
-                self.connection,
+                self.cursor,
                 {
                     "timestamp": 0,
                     "table": {"item": {"modified": [{"id": 1, "name": "Item 1"}], "deleted": []}},
@@ -63,7 +65,7 @@ class TestSQLite3(TestCase):
         # Client B adds item 2
         self.assertEqual(
             database.synchronize(
-                self.connection,
+                self.cursor,
                 {
                     "timestamp": 0,
                     "table": {"item": {"modified": [{"id": 2, "name": "Item 2"}], "deleted": []}},
@@ -77,7 +79,7 @@ class TestSQLite3(TestCase):
         # Client A deletes item 1
         self.assertEqual(
             database.synchronize(
-                self.connection,
+                self.cursor,
                 {
                     "timestamp": 1,
                     "table": {"item": {"modified": [], "deleted": [{"id": 1}]}},
@@ -91,7 +93,7 @@ class TestSQLite3(TestCase):
         # Client B synchronizes
         self.assertEqual(
             database.synchronize(
-                self.connection,
+                self.cursor,
                 {
                     "timestamp": 2,
                     "table": {"item": {"modified": [], "deleted": []}},
@@ -104,15 +106,15 @@ class TestSQLite3(TestCase):
         )
 
         self.assertEqual(
-            self.connection.execute("SELECT * FROM item ORDER BY id").fetchall(),
+            self.cursor.execute("SELECT * FROM item ORDER BY id").fetchall(),
             [(1, "Item 1", -3), (2, "Item 2", 2)],
         )
 
     def test_complex(self) -> None:
-        self.connection.execute(
+        self.cursor.execute(
             "CREATE TABLE thread(id INTEGER, name TEXT, user INTEGER, timestamp INTEGER, PRIMARY KEY (id, user))"
         )
-        self.connection.execute(
+        self.cursor.execute(
             "CREATE TABLE post(id INTEGER, thread_id INTEGER, text TEXT, user INTEGER, timestamp INTEGER, PRIMARY KEY (id, thread_id, user))"
         )
         database = Database(extra_columns=["user"], counter=counter())
@@ -132,7 +134,7 @@ class TestSQLite3(TestCase):
         # User 1 client A adds thread 1 and post 1
         self.assertEqual(
             database.synchronize(
-                self.connection,
+                self.cursor,
                 {
                     "timestamp": 0,
                     "table": {
@@ -156,7 +158,7 @@ class TestSQLite3(TestCase):
         # User 2 client A adds thread 1 and post 1
         self.assertEqual(
             database.synchronize(
-                self.connection,
+                self.cursor,
                 {
                     "timestamp": 0,
                     "table": {
@@ -180,7 +182,7 @@ class TestSQLite3(TestCase):
         # User 1 client A edits post 1 and adds post 2
         self.assertEqual(
             database.synchronize(
-                self.connection,
+                self.cursor,
                 {
                     "timestamp": 1,
                     "table": {
@@ -207,7 +209,7 @@ class TestSQLite3(TestCase):
         # User 1 client B deletes thread 1
         self.assertEqual(
             database.synchronize(
-                self.connection,
+                self.cursor,
                 {
                     "timestamp": 0,
                     "table": {
@@ -233,11 +235,11 @@ class TestSQLite3(TestCase):
         )
 
         self.assertEqual(
-            self.connection.execute("SELECT * FROM thread ORDER BY user,id").fetchall(),
+            self.cursor.execute("SELECT * FROM thread ORDER BY user,id").fetchall(),
             [(1, "Thread 1", 1, -4), (1, "Thread 1", 2, 2)],
         )
         self.assertEqual(
-            self.connection.execute("SELECT * FROM post ORDER BY user,id").fetchall(),
+            self.cursor.execute("SELECT * FROM post ORDER BY user,id").fetchall(),
             [(1, 1, "Post 1 edit", 1, 3), (2, 1, "Post 2", 1, 3), (1, 1, "Post 1", 2, 2)],
         )
 

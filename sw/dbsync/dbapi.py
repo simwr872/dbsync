@@ -3,18 +3,11 @@ from collections.abc import Sequence
 from typing import Any, Optional, Protocol
 
 
-class Module(Protocol):
-    paramstyle: str
-
-
 class Cursor(Protocol):
     @property
     def description(
         self,
     ) -> Sequence[tuple[str, int, Optional[int], Optional[int], Optional[int], Optional[bool]]]:
-        ...
-
-    def close(self) -> None:
         ...
 
     def execute(self, operation: str, parameters: Sequence[Any] = ...) -> Any:
@@ -24,18 +17,4 @@ class Cursor(Protocol):
         ...
 
     def fetchall(self) -> Sequence[Sequence[Any]]:
-        ...
-
-
-class Connection(Protocol):
-    def cursor(self) -> Cursor:
-        ...
-
-    def close(self) -> None:
-        ...
-
-    def commit(self) -> None:
-        ...
-
-    def rollback(self) -> None:
         ...

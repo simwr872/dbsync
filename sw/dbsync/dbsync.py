@@ -1,11 +1,8 @@
-import sqlite3
 import time
-import typing
 from collections import ChainMap
-from types import ModuleType
-from typing import Any, Callable, Optional, Sequence, TypedDict
+from typing import Any, Callable, Literal, Optional, Sequence, TypedDict
 
-from .dbapi import Connection, Cursor, Module
+from .dbapi import Cursor
 
 RowType = dict[str, Any]
 MessageTableType = TypedDict("Table", {"modified": list[RowType], "deleted": list[RowType]})
@@ -104,20 +101,19 @@ class Table:
 
 
 class Database:
+    _paramstyles = {"qmark": "?", "format": "%s"}
+
     def __init__(
         self,
         extra_columns: Optional[list[str]] = None,
         counter: Callable[[], int] = lambda: int(time.time()),
-        module: ModuleType = sqlite3,
+        paramstyle: Literal["qmark", "format"] = "qmark",
     ):
-        # No type checkers support modules as implementations of protocols (January 2021)
-        paramstyle = typing.cast(Module, module).paramstyle
-        paramstyles = {"qmark": "?", "format": "%s"}
-        if paramstyle not in paramstyles:
-            raise ValueError(
-                f"Provided module's global attribute paramstyle must be one of {paramstyles.keys()}"
-            )
-        self._param = paramstyles[paramstyle]
+        """
+        `extra_columns` is a list of extra column names required to identify a row. `counter` is a
+        function returning the next timestamp. `paramstyle` is the DBAPI module paramstyle.
+        """
+        self._param = self._paramstyles[paramstyle]
         if extra_columns is None:
             extra_columns = []
         self._extra_columns = extra_columns
@@ -127,40 +123,28 @@ class Database:
     def add_table(self, name: str, primary_columns: list[str], schema: dict[str, Any]) -> None:
         self._tables[name] = Table(name, primary_columns, schema, self._extra_columns, self._param)
 
-    def graverob(self, connection: Connection, delta: int = 2592000) -> None:
+    def graverob(self, cursor: Cursor, delta: int = 2592000) -> None:
+        """Commit and rollback must be handled by caller."""
         timestamp = -self._counter() + delta
-        cursor = connection.cursor()
-        try:
-            for table in self._tables.values():
-                table.graverob(cursor, timestamp)
-            connection.commit()
-        except Exception as exception:
-            connection.rollback()
-            raise exception
-        finally:
-            cursor.close()
+        for table in self._tables.values():
+            table.graverob(cursor, timestamp)
 
-    def synchronize(
-        self, connection: Connection, request: MessageType, **extras: Any
-    ) -> MessageType:
+    def synchronize(self, cursor: Cursor, request: MessageType, **extras: Any) -> MessageType:
+        """
+        Commit and rollback must be handled by caller. `extras` are keyword given by previosuly
+        supplied `extra_columns` at Database initialization.
+        """
         last_timestamp = request["timestamp"]
         current_timestamp = self._counter()
-        cursor = connection.cursor()
         response: MessageType = {"timestamp": current_timestamp, "table": {}}
-        try:
-            for name, table in request["table"].items():
-                response["table"][name] = self._tables[name].synchronize(
-                    cursor, last_timestamp, current_timestamp, table, **extras
-                )
-            connection.commit()
-        except Exception as exception:
-            connection.rollback()
-            raise exception
-        finally:
-            cursor.close()
+        for name, table in request["table"].items():
+            response["table"][name] = self._tables[name].synchronize(
+                cursor, last_timestamp, current_timestamp, table, **extras
+            )
         return response
 
     def schema(self) -> dict[str, Any]:
+        """Returns the database's jsonschema."""
         return {
             "definitions": {
                 **ChainMap(*[table.schema_definition() for table in self._tables.values()]),
