@@ -160,7 +160,7 @@ class Database:
             },
             "type": "object",
             "properties": {
-                "timestamp": {"type": "integer", "minimum": 0},
+                "timestamp": {"type": "integer", "minimum": 0, "maximum": 2 ** 31 - 1},
                 "table": {
                     "type": "object",
                     "properties": {
